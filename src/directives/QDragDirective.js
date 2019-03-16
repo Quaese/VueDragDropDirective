@@ -25,38 +25,82 @@ const getChildNode = (parent, node) => {
 /*
  * Event handler
  */
-const handleDragStart = function(evt) {
-  // set draggable element
-  srcElem = evt.target;
+const handleDragStart = function(data) {
+  return function(evt) {
+    data;
 
-  // set data transfer properties
-  evt.dataTransfer.effectAllowed = "move";
-  evt.dataTransfer.setData("text/html", srcElem.innerHTML);
+    // set draggable element
+    srcElem = evt.target;
 
-  triggerCustomHandler("onDragStart");
+    // add class
+    evt.target.classList.add("dragging");
+
+    // set data transfer properties
+    evt.dataTransfer.effectAllowed = "move";
+    evt.dataTransfer.setData("text/html", srcElem.innerHTML);
+
+    // trigger events
+    triggerCustomHandler("onDragStart");
+    data.vnode.context.$emit("dragstart");
+  };
 };
 
-const handleDragOver = function(evt) {
-  // prevent default action of element (e.g. link)
-  if (evt.preventDefault) {
-    evt.preventDefault();
-  }
+const handleDragOver = function(data) {
+  return function(evt) {
+    // prevent default action of element (e.g. link)
+    if (evt.preventDefault) {
+      evt.preventDefault();
+    }
 
-  evt.dataTransfer.dropEffect = "move";
+    data;
 
-  triggerCustomHandler("onDragOver");
+    evt.dataTransfer.dropEffect = "move";
+
+    // trigger events
+    triggerCustomHandler("onDragOver");
+    data.vnode.context.$emit("dragover");
+
+    return false;
+  };
 };
 
-const handleDragEnter = function(evt) {
-  evt;
+const handleDrag = function(data) {
+  return function(evt) {
+    evt;
+    data;
 
-  triggerCustomHandler("onDragEnter");
+    //evt.target.classList.add("drag-over");
+
+    // trigger events
+    triggerCustomHandler("onDrag");
+    data.vnode.context.$emit("drag");
+  };
 };
 
-const handleDragLeave = function(evt) {
-  evt;
+const handleDragEnter = function(data) {
+  return function(evt) {
+    evt;
+    data;
 
-  triggerCustomHandler("onDragLeave");
+    //evt.target.classList.add("drag-over");
+
+    // trigger events
+    triggerCustomHandler("onDragEnter");
+    data.vnode.context.$emit("dragenter");
+  };
+};
+
+const handleDragLeave = function(data) {
+  return function(evt) {
+    evt;
+    data;
+
+    evt.target.classList.remove("drag-leave");
+
+    // trigger events
+    triggerCustomHandler("onDragLeave");
+    data.vnode.context.$emit("dragleave");
+  };
 };
 
 const handleDragEnd = function(data) {
@@ -64,7 +108,11 @@ const handleDragEnd = function(data) {
     evt;
     data;
 
+    evt.target.classList.remove("dragging", "drag-over");
+
+    // trigger events
     triggerCustomHandler("onDragEnd");
+    data.vnode.context.$emit("dragend");
     srcElem = null;
   };
 };
@@ -99,7 +147,9 @@ const handleDrop = function(data) {
       }
     }
 
-    triggerCustomHandler("onHandleDrop");
+    // trigger events
+    triggerCustomHandler("onDrop");
+    data.vnode.context.$emit("drop");
 
     return false;
   };
@@ -132,9 +182,7 @@ const handleDrop = function(data) {
  */
 export const QDrag = {
   bind(el, binding, vnode) {
-    vnode;
-    // console.log("el: ", el, "\nbinding: ", binding, "\nvnode: ", vnode);
-
+    // get handed over handler
     handler =
       binding.value && binding.value.handler
         ? binding.value.handler
@@ -149,8 +197,9 @@ export const QDrag = {
       el.setAttribute("draggable", true);
 
       // register drag events for drag start and drag end
-      el.addEventListener("dragstart", handleDragStart, false);
-      el.addEventListener("dragend", handleDragEnd({}), false);
+      el.addEventListener("dragstart", handleDragStart({ vnode }), false);
+      el.addEventListener("drag", handleDrag({ vnode }), false);
+      el.addEventListener("dragend", handleDragEnd({ vnode }), false);
     }
 
     if (binding.modifiers.dropzone) {
@@ -158,6 +207,7 @@ export const QDrag = {
       el.addEventListener(
         "drop",
         handleDrop({
+          vnode,
           position: binding.modifiers.last ? 1 : binding.modifiers.first ? 0 : 2
         }),
         false
@@ -165,29 +215,34 @@ export const QDrag = {
     }
 
     // events for all elements
-    el.addEventListener("dragover", handleDragOver, false);
-    el.addEventListener("dragenter", handleDragEnter, false);
-    el.addEventListener("dragleave", handleDragLeave, false);
+    el.addEventListener("dragover", handleDragOver({ vnode }), false);
+    el.addEventListener("dragenter", handleDragEnter({ vnode }), false);
+    el.addEventListener("dragleave", handleDragLeave({ vnode }), false);
   },
 
   componentUpdated(element, binding, vnode, oldVnode) {
-    console.log(
-      "QDragDirective (componentUpdated): ",
-      element,
-      binding,
-      vnode,
-      oldVnode
-    );
+    element;
+    binding;
+    vnode;
+    oldVnode;
   },
 
   update(element, binding, vnode, oldVnode) {
-    console.log("QDragDirective (update): ", element, binding, vnode, oldVnode);
+    element;
+    binding;
+    vnode;
+    oldVnode;
   },
 
   unbind(el) {
-    console.log("unbind: ", el);
-
     // ToDo: Remove Events!!!
+    el.removeAttribute("draggable");
+    el.removeEventListener("dragstart", handleDragStart({}));
+    el.removeEventListener("drag", handleDrag({}));
+    el.removeEventListener("dragend", handleDragEnd({}));
+    el.removeEventListener("dragover", handleDragOver({}));
+    el.removeEventListener("dragenter", handleDragEnter({}));
+    el.removeEventListener("dragleave", handleDragLeave({}));
   }
 };
 
